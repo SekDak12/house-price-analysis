@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[ ]:
+# In[8]:
 
 
 import matplotlib.pyplot as plt
@@ -10,13 +10,13 @@ import pandas as pd
 df = pd.read_csv("train.csv")
 
 
-# In[ ]:
+# In[9]:
 
 
 df.head()
 
 
-# In[ ]:
+# In[10]:
 
 
 # Check for missing values in each column
@@ -28,7 +28,7 @@ missing_values = missing_values[missing_values > 0]
 missing_values
 
 
-# In[24]:
+# In[11]:
 
 
 # Define the columns to drop
@@ -42,7 +42,7 @@ df = df.drop(columns=columns_to_drop)
 df.head()
 
 
-# In[ ]:
+# In[17]:
 
 
 from sklearn.feature_selection import RFE
@@ -51,7 +51,6 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import make_column_transformer
 from sklearn.pipeline import make_pipeline
 from sklearn.ensemble import RandomForestRegressor
-
 # Identify the categorical columns
 categorical_columns = df.select_dtypes(include=['object']).columns
 
@@ -70,7 +69,7 @@ X = df.drop(columns=['SalePrice'])
 # Create a pipeline that first one-hot encodes the data and then applies RFE
 model = make_pipeline(
     preprocessor,
-    RFE(estimator=RandomForestRegressor(), n_features_to_select=20)
+    RFE(estimator=LinearRegression(), n_features_to_select=20)
 )
 
 # Fit the model
@@ -90,13 +89,15 @@ top_features_rfe = features_rfe[features_rfe.Ranking == 1]
 top_features_rfe
 
 
-# In[47]:
+# In[18]:
 
 
 # Use the fitted model to transform the feature set
 X = df.drop(columns=['SalePrice'])
+y = df['SalePrice']
 
-X_transformed = model_rfe.transform(X)
+
+X_transformed = model.transform(X)
 
 
 # Train a random forest model using the transformed feature set
@@ -110,7 +111,7 @@ rf.fit(X_transformed, y)
 rf
 
 
-# In[64]:
+# In[20]:
 
 
 # Load the new test dataset
@@ -124,7 +125,7 @@ test_X_filled = test_X_puro.fillna(0)
 
 
 # Use the RFE model to transform the imputed test feature set
-test_X_transformed = model_rfe.transform(test_X_filled)
+test_X_transformed = model.transform(test_X_filled)
 
 # Use the trained random forest model to make predictions on the test set
 test_y_pred = rf.predict(test_X_transformed)
@@ -138,7 +139,7 @@ predictions_df = pd.DataFrame({
 predictions_df.head()
 
 
-# In[61]:
+# In[ ]:
 
 
 b= test_X_puro.isnull().sum().sort_values(ascending=False)
@@ -149,7 +150,7 @@ missing_values2 = b[b > 0]
 missing_values2
 
 
-# In[60]:
+# In[ ]:
 
 
 a= X.isnull().sum().sort_values(ascending=False)
@@ -160,8 +161,58 @@ missing_values23 = a[a > 0]
 missing_values23
 
 
-# In[ ]:
+# In[22]:
 
 
+from sklearn.neural_network import MLPRegressor
 
+# Define the MLPRegressor model
+mlp = MLPRegressor(hidden_layer_sizes=(100,), activation='relu', solver='adam', max_iter=200, random_state=42)
+# Apply one-hot encoding to the categorical columns
+
+categorical_columns = df.select_dtypes(include=['object']).columns
+
+
+preprocessor = make_column_transformer(
+    (OneHotEncoder(handle_unknown='ignore'), categorical_columns),
+    remainder='passthrough'
+)
+# Create a pipeline that first pre-processes the data and then applies the MLPRegressor
+mode1l = make_pipeline(
+    preprocessor,
+    mlp
+)
+
+# Fit the model
+mode1l.fit(X, y)
+
+mode1l
+
+
+# In[26]:
+
+
+# Load the new test dataset
+test_df = pd.read_csv('test.csv')
+
+# Select the same features as in the training set
+test_X = test_df
+
+test_X_puro = test_X.drop(columns=columns_to_drop)
+test_X_filled = test_X_puro.fillna(0)
+
+
+# Use the RFE model to transform the imputed test feature set
+test_X_transformed = model.transform(test_X_filled)
+
+# Use the trained random forest model to make predictions on the test set
+test_y_pred = mode1l.predict(test_X_filled)
+
+# Create a DataFrame with the IDs and the predicted prices
+predictions_df = pd.DataFrame({
+    'Id': test_df['Id'],
+    'SalePrice': test_y_pred
+})
+
+predictions_df.head(10)
 
